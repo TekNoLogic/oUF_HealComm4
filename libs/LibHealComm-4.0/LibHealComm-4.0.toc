@@ -1,0 +1,14 @@
+## Interface: 30200
+## Title: Lib: Heal Comm - 4.0
+## Notes: Pending heals library
+## Author: Shadowed and xbeeps
+## X-Category: Library
+## X-Curse-Packaged-Version: r20090907184301
+## X-Curse-Project-Name: LibHealComm-4.0
+## X-Curse-Project-ID: libhealcomm-4-0
+## X-Curse-Repository-ID: wow/libhealcomm-4-0/mainline
+
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\Callbackhandler-1.0.lua
+
+LibHealComm-4.0.xml
