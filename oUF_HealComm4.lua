@@ -28,17 +28,11 @@ local oUF_HealComm = {}
 
 local healcomm = LibStub("LibHealComm-4.0")
 
-local unitMap = {}
-
 -- update a specific bar
-local updateHealCommBar = function(frame, playerGUID)
-
-	unitMap = healcomm:GetGuidUnitMapTable() -- doing this every time??? blargh
-	local unitName = playerGUID and unitMap[playerGUID]
-
+local updateHealCommBar = function(frame, unitName, playerGUID)
 	if not unitName then return end
 
-	local maxHP = UnitHealthMax(unitName)
+	local maxHP = UnitHealthMax(unitName) or 0
 
 	-- hide if unknown max hp
 	if maxHP == 0 or maxHP == 100 then
@@ -54,6 +48,9 @@ local updateHealCommBar = function(frame, playerGUID)
 		return
 	end
 
+	-- apply heal modifier
+	incHeals = incHeals * healcomm:GetHealModifier(playerGUID)
+
 	frame.HealCommBar:Show()
 
 	local percInc = incHeals / maxHP
@@ -66,15 +63,22 @@ end
 
 -- used by library callbacks, arguments should be list of units to update
 local updateHealCommBars = function(...)
-	local playerGUID, frameGUID
+	local playerGUID, unit, frameGUID
+
+	-- update the unitMap to make sure it is current
+	local unitMap = healcomm:GetGuidUnitMapTable()
+
 	for i = 1, select("#", ...) do
 		playerGUID = select(i, ...)
+		unit = unitMap[playerGUID]
 
-		-- search current oUF frames for this unit
-		for frame in pairs(oUF.units) do
-			frameGUID = UnitGUID(frame)
-			if frameGUID == playerGUID and not oUF.units[frame].ignoreHealComm then
-				updateHealCommBar(oUF.units[frame], frameGUID)
+		if unit then
+			-- search current oUF frames for this unit
+			for frame in pairs(oUF.units) do
+				frameGUID = UnitGUID(frame)
+				if frameGUID == playerGUID and not oUF.units[frame].ignoreHealComm then
+					updateHealCommBar(oUF.units[frame], unit, frameGUID)
+				end
 			end
 		end
 	end
