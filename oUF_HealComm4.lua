@@ -99,11 +99,11 @@ local function hook(frame)
 
 	frame.HealCommBar = hcb
 
-	local o = frame.PostUpdateHealth
+	local origPostUpdate = frame.PostUpdateHealth
 	frame.PostUpdateHealth = function(...)
-		if o then o(...) end
+		if origPostUpdate then origPostUpdate(...) end
 		local frameGUID = UnitGUID(frame.unit)
-		updateHealCommBar(frame, frameGUID) -- update the bar when unit's health is updated
+		updateHealCommBars(frameGUID) -- update the bar when unit's health is updated
 	end
 end
 
