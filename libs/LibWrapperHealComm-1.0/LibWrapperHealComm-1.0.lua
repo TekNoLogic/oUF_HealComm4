@@ -1,11 +1,13 @@
 local major = "LibWrapperHealComm-1.0"
-local minor = 3
+local minor = 6
 assert(LibStub, string.format("%s requires LibStub.", major))
 
 local CommWrapper = LibStub:NewLibrary(major, minor)
 if( not CommWrapper ) then return end
 
-local HealComm40 = LibStub:GetLibrary("LibHealComm-4.0")
+local HealComm40 = LibStub:GetLibrary("LibHealComm-4.0", true)
+assert(HealComm40, string.format("%s-%d requires LibHealComm-4.0 to run.", major, minor))
+
 local playerName = UnitName("player")
 local playerGUID, distribution
 
@@ -69,11 +71,10 @@ local function getName(unit)
 	if( not unit ) then return nil end
 	
 	local name, server = UnitName(unit)
-	if( distribution ~= "BATTLEGROUND" ) then return name end
-	
-	server = server and server ~= "" and server or GetRealmName()
-	name = name and string.format("%s-%s", name, server)
-	
+	if( distribution == "BATTLEGROUND" and server and server ~= "" ) then
+		return string.format("%s-%s", name, server)
+	end
+
 	return name
 end
 
@@ -86,16 +87,16 @@ function CommWrapper:HealComm_HealStarted(event, casterGUID, spellID, healType, 
 	if( spellName == PrayerofHealing ) then
 		local targetList
 		for i=1, select("#", ...) do
-			local name = HealComm40.guidToUnit[select(i, ...)]
-			if( name ) then
+			local unit = HealComm40.guidToUnit[select(i, ...)]
+			if( unit ) then
 				if( targetList ) then
-					targetList = targetList .. ":" .. name
+					targetList = targetList .. ":" .. getName(unit)
 				else
-					targetList = name
+					targetList = getName(unit)
 				end
 			end
 		end
-		
+				
 		-- Grab the first heal amount it finds
 		local healAmount = HealComm40.pendingHeals[casterGUID][spellName][2]
 		if( targetList and healAmount ) then
@@ -177,15 +178,10 @@ local function parseDirectHeal(casterGUID, spellName, amount, endTime, ...)
 	pending.spellID = CommWrapper.spellNameToID[spellName] or 0
 	pending.bitType = HealComm40.DIRECT_HEALS
 
-	amount = math.floor(amount)
-	
 	for i=1, select("#", ...) do
-		table.insert(pending, (select(i, ...)))
-		table.insert(pending, amount)
-		table.insert(pending, 1)
-		table.insert(pending, 0)
+		HealComm40.updateRecord(pending, select(i, ...), math.floor(amount), 1)
 	end
-
+	
 	HealComm40.callbacks:Fire("HealComm_HealStarted", casterGUID, pending.spellID, pending.bitType, pending.endTime, ...)
 end
 
@@ -196,24 +192,48 @@ local function parseHealEnd(casterGUID, spellName)
 	table.wipe(tempPlayerList)
 	
 	local pending = pendingHeals[casterGUID][spellName]
-	for i=#(pending), 1, -4 do
-		table.remove(pending, i)
-		table.remove(pending, i - 1)
-		table.remove(pending, i - 2)
-		table.insert(tempPlayerList, table.remove(pending, i - 3))
+	for i=#(pending), 1, -5 do
+		table.insert(tempPlayerList, pending[i - 4])
+		HealComm40.removeRecord(pending, pending[i - 4])
 	end
-	
+
 	if( #(tempPlayerList) > 0 ) then
 		HealComm40.callbacks:Fire("HealComm_HealStopped", casterGUID, pending.spellID, pending.bitType, false, unpack(tempPlayerList))
 		table.wipe(pendingHeals)
 	end
 end
 
-local function loadPlayers(...)
+-- Yoinked from LHC-3
+local function extractRealm(fullName)
+	return select(2, string.split('-', fullName, 2))
+end
+
+-- Convert a remotely generated fully qualified name to
+-- a local fully qualified name.
+local playerRealm = GetRealmName()
+
+local function convertRealm(fullName, remoteRealm)
+	if( not remoteRealm ) then return fullName end
+
+	local name, realm = string.split('-', fullName, 2)
+	if( not realm ) then
+		-- Apply remote realm if there is no realm on the target
+		return fullName.."-"..remoteRealm
+	elseif(realm == playerRealm) then
+		-- Strip realm if it is equal to the local realm
+		return name
+	end
+	
+	-- Sender and target realms are both different from local realm
+	return fullName
+end
+
+local function loadPlayers(sender, ...)
 	table.wipe(tempPlayerList)
 	
+	local senderRealm = extractRealm(sender)
 	for i=1, select("#", ...) do
-		local guid = UnitGUID((select(i, ...)))
+		local guid = UnitGUID(convertRealm(select(i, ...), senderRealm))
 		if( guid ) then
 			table.insert(tempPlayerList, guid)
 		end
@@ -251,7 +271,7 @@ function CommWrapper:CHAT_MSG_ADDON(prefix, message, channel, sender)
 			local heal = tonumber(string.sub(message, 4, 8))
 			local target = string.sub(message, 9, -1)
 			local spellName, _, _, _, _, endTime = UnitCastingInfo(sender)
-			local guid = UnitGUID(target)
+			local guid = UnitGUID(convertRealm(target, extractRealm(sender)))
 			
 			if( heal and target and endTime and guid and spellName ) then
 				endTime = endTime / 1000
@@ -267,7 +287,7 @@ function CommWrapper:CHAT_MSG_ADDON(prefix, message, channel, sender)
 			local spellName, _, _, _, _, endTime = UnitCastingInfo(sender)
 
 			if( heal and targets and endTime and spellName ) then
-				loadPlayers(string.split(":", targets))
+				loadPlayers(sender, string.split(":", targets))
 				if( #(tempPlayerList) == 0 ) then return end
 				
 				endTime = endTime / 1000

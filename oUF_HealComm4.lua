@@ -30,7 +30,12 @@ local healcomm = LibStub("LibHealComm-4.0")
 
 -- update a specific bar
 local updateHealCommBar = function(frame, unitName, playerGUID)
-	if not unitName then return end
+
+	-- hide bars for any units with an unknown name
+	if not unitName then
+		frame.HealCommBar:Hide()
+		return
+	end
 
 	local maxHP = UnitHealthMax(unitName) or 0
 
@@ -57,6 +62,11 @@ local updateHealCommBar = function(frame, unitName, playerGUID)
 	local curHP = UnitHealth(unitName)
 	local percHP = curHP / maxHP
 
+	-- slightly inefficient to set height here for the moment but it should
+	-- fix different heights for units with/without a power bar
+	-- Changing to be able to have vertical/horizontal bars will mean we
+	-- have to do this here anyway...
+	frame.HealCommBar:SetHeight(frame.Health:GetHeight())
 	frame.HealCommBar:SetWidth(percInc * frame.Health:GetWidth())
 	frame.HealCommBar:SetPoint("LEFT", frame.Health, "LEFT", frame.Health:GetWidth() * percHP, 0)
 end
@@ -72,13 +82,11 @@ local updateHealCommBars = function(...)
 		playerGUID = select(i, ...)
 		unit = unitMap[playerGUID]
 
-		if unit then
-			-- search current oUF frames for this unit
-			for frame in pairs(oUF.units) do
-				frameGUID = UnitGUID(frame)
-				if frameGUID == playerGUID and not oUF.units[frame].ignoreHealComm then
-					updateHealCommBar(oUF.units[frame], unit, frameGUID)
-				end
+		-- search current oUF frames for this unit
+		for frame in pairs(oUF.units) do
+			frameGUID = UnitGUID(frame)
+			if frameGUID == playerGUID and not oUF.units[frame].ignoreHealComm then
+				updateHealCommBar(oUF.units[frame], unit, playerGUID)
 			end
 		end
 	end
@@ -87,9 +95,16 @@ end
 local function hook(frame)
 	if frame.ignoreHealComm then return end
 
+	-- make sure some crap implementation using oUF
+	-- for non-unit frames doesn't cause errors
+	if not frame.Health then
+		frame.ignoreHealComm = true
+		return
+	end
+
 	-- create heal bar here and set initial values
 	local hcb = CreateFrame("StatusBar")
-	hcb:SetHeight(frame.Health:GetHeight()) -- same height as health bar
+	hcb:SetHeight(0) -- no initial height
 	hcb:SetWidth(0) -- no initial width
 	hcb:SetStatusBarTexture(frame.Health:GetStatusBarTexture():GetTexture())
 	hcb:SetStatusBarColor(color.r, color.g, color.b, color.a)
@@ -114,11 +129,11 @@ for i, frame in ipairs(oUF.objects) do hook(frame) end
 oUF:RegisterInitCallback(hook)
 
 -- set up LibHealComm callbacks
-function oUF_HealComm:HealComm_Heal_Update(_, _, _, _, ...)
+function oUF_HealComm:HealComm_Heal_Update(event, casterGUID, spellID, healType, _, ...)
 	updateHealCommBars(...)
 end
 
-function oUF_HealComm:HealComm_Modifier_Changed(guid, _)
+function oUF_HealComm:HealComm_Modified(event, guid)
 	updateHealCommBars(guid)
 end
 
@@ -126,4 +141,5 @@ healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealStarted", "HealComm_Heal_U
 healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealUpdated", "HealComm_Heal_Update")
 healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealDelayed", "HealComm_Heal_Update")
 healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealStopped", "HealComm_Heal_Update")
-healcomm.RegisterCallback(oUF_HealComm, "HealComm_ModifierChanged", "HealComm_Modifier_Changed")
+healcomm.RegisterCallback(oUF_HealComm, "HealComm_ModifierChanged", "HealComm_Modified")
+healcomm.RegisterCallback(oUF_HealComm, "HealComm_GUIDDisappeared", "HealComm_Modified")
