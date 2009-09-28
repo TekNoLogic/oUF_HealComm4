@@ -10,6 +10,8 @@
 -- * can define frame.ignoreHealComm in layout to not have the bars appear on 
 --   that frame
 --
+-- This addon is based on the original oUF_HealComm by Krage
+--
 --=============================================================================
 local parent = debugstack():match[[\AddOns\(.-)\]]
 local global = GetAddOnMetadata(parent, 'X-oUF')
