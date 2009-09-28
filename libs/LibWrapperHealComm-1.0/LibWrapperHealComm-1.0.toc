@@ -8,4 +8,8 @@
 ## X-Curse-Project-ID: libwrapperhealcomm-1-0
 ## X-Curse-Repository-ID: wow/libwrapperhealcomm-1-0/mainline
 
+#@no-lib-strip@
+libs\LibStub\LibStub.lua
+#@end-no-lib-strip@
+
 LibWrapperHealComm-1.0.xml

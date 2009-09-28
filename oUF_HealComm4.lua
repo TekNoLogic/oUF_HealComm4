@@ -62,13 +62,17 @@ local updateHealCommBar = function(frame, unitName, playerGUID)
 	local curHP = UnitHealth(unitName)
 	local percHP = curHP / maxHP
 
-	-- slightly inefficient to set height here for the moment but it should
-	-- fix different heights for units with/without a power bar
-	-- Changing to be able to have vertical/horizontal bars will mean we
-	-- have to do this here anyway...
-	frame.HealCommBar:SetHeight(frame.Health:GetHeight())
-	frame.HealCommBar:SetWidth(percInc * frame.Health:GetWidth())
-	frame.HealCommBar:SetPoint("LEFT", frame.Health, "LEFT", frame.Health:GetWidth() * percHP, 0)
+	frame.HealCommBar:ClearAllPoints()
+
+	if frame.Health:GetOrientation() == "VERTICAL" then
+		frame.HealCommBar:SetHeight(percInc * frame.Health:GetHeight())
+		frame.HealCommBar:SetWidth(frame.Health:GetWidth())
+		frame.HealCommBar:SetPoint("BOTTOM", frame.Health, "BOTTOM", 0, frame.Health:GetHeight() * percHP)
+	else
+		frame.HealCommBar:SetHeight(frame.Health:GetHeight())
+		frame.HealCommBar:SetWidth(percInc * frame.Health:GetWidth())
+		frame.HealCommBar:SetPoint("LEFT", frame.Health, "LEFT", frame.Health:GetWidth() * percHP, 0)
+	end
 end
 
 -- used by library callbacks, arguments should be list of units to update
@@ -94,13 +98,6 @@ end
 
 local function hook(frame)
 	if frame.ignoreHealComm then return end
-
-	-- make sure some crap implementation using oUF
-	-- for non-unit frames doesn't cause errors
-	if not frame.Health then
-		frame.ignoreHealComm = true
-		return
-	end
 
 	-- create heal bar here and set initial values
 	local hcb = CreateFrame("StatusBar")
