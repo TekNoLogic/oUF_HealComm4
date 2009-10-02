@@ -1,5 +1,5 @@
 local major = "LibHealComm-4.0"
-local minor = 32
+local minor = 35
 assert(LibStub, string.format("%s requires LibStub.", major))
 
 local HealComm = LibStub:NewLibrary(major, minor)
@@ -332,8 +332,51 @@ HealComm.protectedMap = HealComm.protectedMap or setmetatable({}, {
 	__metatable = false
 })
 
-function HealComm:GetGuidUnitMapTable()
+function HealComm:GetGUIDUnitMapTable()
 	return HealComm.protectedMap
+end
+
+-- Gets the next heal landing on someone using the passed filters
+function HealComm:GetNextHealAmount(guid, bitFlag, time, ignoreGUID)
+	local healTime, healAmount, healFrom
+	local currentTime = GetTime()
+	
+	for casterGUID, spells in pairs(pendingHeals) do
+		for _, pending in pairs(spells) do
+			if( pending.bitType and bit.band(pending.bitType, bitFlag) > 0 ) then
+				for i=1, #(pending), 5 do
+					local guid = pending[i]
+					if( not ignoreGUID or ignoreGUID ~= guid ) then
+						local amount = pending[i + 1]
+						local stack = pending[i + 2]
+						local endTime = pending[i + 3]
+						endTime = endTime > 0 and endTime or pending.endTime
+							
+						-- Direct heals are easy, if they match the filter then return them
+						if( ( pending.bitType == DIRECT_HEALS or pending.bitType == BOMB_HEALS ) and ( not time or endTime <= time ) ) then
+							if( not healTime or endTime < healTime ) then
+								healTime = endTime
+								healAmount = amount * stack
+								healFrom = casterGUID
+							end
+							
+						-- Channeled heals and hots, have to figure out how many times it'll tick within the given time band
+						elseif( pending.bitType == CHANNEL_HEALS or pending.bitType == HOT_HEALS ) then
+							local secondsLeft = time and time - currentTime or endTime - currentTime
+							local nextTick = currentTime + (secondsLeft % pending.tickInterval)
+							if( not healTime or nextTick < healTime ) then
+								healTime = nextTick
+								healAmount = amount * stack
+								healFrom = casterGUID
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	return healTime, healFrom, healAmount
 end
 
 -- Get the healing amount that matches the passed filters
@@ -873,7 +916,7 @@ if( playerClass == "PRIEST" ) then
 	LoadClassData = function()
 		-- Hot data
 		local Renew = GetSpellInfo(139)
-		hotData[Renew] = {coeff = 1, interval = 3, ticks = 5, levels = {8, 14, 20, 26, 32, 38, 44, 50, 56, 60, 65, 70, 75, 80}, averages = {45, 1009, 175, 245, 315, 400, 510, 650, 810, 970, 1010, 1110, 1235, 1400}}
+		hotData[Renew] = {coeff = 1, interval = 3, ticks = 5, levels = {8, 14, 20, 26, 32, 38, 44, 50, 56, 60, 65, 70, 75, 80}, averages = {45, 100, 175, 245, 315, 400, 510, 650, 810, 970, 1010, 1110, 1235, 1400}}
 		--local GlyphofPoH = GetSpellInfo(56161)
 		--hotData[GlyphofPoH] = {isMulti = true, interval = 3}
 		
