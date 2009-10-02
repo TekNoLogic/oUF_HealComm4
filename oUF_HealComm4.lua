@@ -33,6 +33,13 @@ local healcomm = LibStub("LibHealComm-4.0")
 -- update a specific bar
 local updateHealCommBar = function(frame, unitName, playerGUID)
 
+	if not frame.unit then return end
+
+	local frameGUID = UnitGUID(frame.unit)
+	if frameGUID ~= playerGUID then return end
+
+	if frame.ignoreHealComm then return end
+
 	-- hide bars for any units with an unknown name
 	if not unitName then
 		frame.HealCommBar:Hide()
@@ -79,27 +86,31 @@ end
 
 -- used by library callbacks, arguments should be list of units to update
 local updateHealCommBars = function(...)
-	local playerGUID, unit, frameGUID
+	local playerGUID, unit
 
 	-- update the unitMap to make sure it is current
-	local unitMap = healcomm:GetGuidUnitMapTable()
+	local unitMap = healcomm:GetGUIDUnitMapTable()
 
 	for i = 1, select("#", ...) do
 		playerGUID = select(i, ...)
 		unit = unitMap[playerGUID]
 
 		-- search current oUF frames for this unit
-		for frame in pairs(oUF.units) do
-			frameGUID = UnitGUID(frame)
-			if frameGUID == playerGUID and not oUF.units[frame].ignoreHealComm then
-				updateHealCommBar(oUF.units[frame], unit, playerGUID)
-			end
+		-- each character may be in multiple frames (target, raid,
+		-- focus, etc..) so need to check all frames
+		for i, frame in ipairs(oUF.objects) do
+			updateHealCommBar(frame, unit, playerGUID)
 		end
 	end
 end
 
 local function hook(frame)
 	if frame.ignoreHealComm then return end
+
+	if not frame.Health then
+		frame.ignoreHealComm = true
+		return
+	end
 
 	-- create heal bar here and set initial values
 	local hcb = CreateFrame("StatusBar")
@@ -116,8 +127,7 @@ local function hook(frame)
 	local origPostUpdate = frame.PostUpdateHealth
 	frame.PostUpdateHealth = function(...)
 		if origPostUpdate then origPostUpdate(...) end
-		local frameGUID = UnitGUID(frame.unit)
-		updateHealCommBars(frameGUID) -- update the bar when unit's health is updated
+		updateHealCommBars(frame) -- update the bar when unit's health is updated
 	end
 end
 
