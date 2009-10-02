@@ -127,7 +127,8 @@ local function hook(frame)
 	local origPostUpdate = frame.PostUpdateHealth
 	frame.PostUpdateHealth = function(...)
 		if origPostUpdate then origPostUpdate(...) end
-		updateHealCommBars(frame) -- update the bar when unit's health is updated
+		local frameGUID = UnitGUID(frame.unit)
+		updateHealCommBars(frameGUID) -- update the bar when unit's health is updated
 	end
 end
 
