@@ -30,6 +30,8 @@ local oUF_HealComm = {}
 
 local healcomm = LibStub("LibHealComm-4.0")
 
+local unitMap = healcomm:GetGUIDUnitMapTable()
+
 -- update a specific bar
 local updateHealCommBar = function(frame, unitName, playerGUID)
 
@@ -89,7 +91,7 @@ local updateHealCommBars = function(...)
 	local playerGUID, unit
 
 	-- update the unitMap to make sure it is current
-	local unitMap = healcomm:GetGUIDUnitMapTable()
+	unitMap = healcomm:GetGUIDUnitMapTable()
 
 	for i = 1, select("#", ...) do
 		playerGUID = select(i, ...)
@@ -128,7 +130,8 @@ local function hook(frame)
 	frame.PostUpdateHealth = function(...)
 		if origPostUpdate then origPostUpdate(...) end
 		local frameGUID = UnitGUID(frame.unit)
-		updateHealCommBars(frameGUID) -- update the bar when unit's health is updated
+		unitMap = healcomm:GetGUIDUnitMapTable()
+		updateHealCommBar(frame, unitMap[frameGUID], frameGUID) -- update the bar when unit's health is updated
 	end
 end
 
