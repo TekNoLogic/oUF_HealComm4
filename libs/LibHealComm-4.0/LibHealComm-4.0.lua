@@ -1,5 +1,5 @@
 local major = "LibHealComm-4.0"
-local minor = 36
+local minor = 37
 assert(LibStub, string.format("%s requires LibStub.", major))
 
 local HealComm = LibStub:NewLibrary(major, minor)
@@ -803,23 +803,23 @@ if( playerClass == "PALADIN" ) then
 		-- Spell data
 		-- Holy Light
 		local HolyLight = GetSpellInfo(635)
-		spellData[HolyLight] = {coeff = 1.66 / 1.88,
+		spellData[HolyLight] = {coeff = 2.5 / 3.5 * 1.25,
 			levels = {1, 6, 14, 22, 30, 38, 46, 54, 60, 62, 70, 75, 80},
 			averages = {avg(50, 60), avg(96, 116), avg(203, 239), avg(397, 455), avg(628, 708), avg(894, 998), avg(1209, 1349), avg(1595, 1777), avg(2034, 2266), avg(2232, 2486), avg(2818, 3138), avg(4199, 4677), avg(4888, 5444)},
 			increase = {63, 81, 112, 139, 155, 159, 156, 135, 116, 115, 70, 52, 0}}
 		-- Flash of Light
 		local FlashofLight = GetSpellInfo(19750)
-		spellData[FlashofLight] = {coeff = 1.009 / 1.88,
+		spellData[FlashofLight] = {coeff = 1.5 / 3.5 * 1.25,
 			levels = {20, 26, 34, 42, 50, 58, 66, 74, 79},
 			averages = {avg(81, 93), avg(124, 144), avg(189, 211), avg(256, 288), avg(346, 390), avg(445, 499), avg(588, 658), avg(682, 764), avg(785, 879)},
 			increase = {60, 70, 73, 72, 66, 57, 42, 20, 3}}
 		
 		-- Talent data
 		-- Need to figure out a way of supporting +6% healing from imp devo aura, might not be able to
-		-- Healing Light (Add)
+		-- Healing Light (Multi)
 		local HealingLight = GetSpellInfo(20237)
 		talentData[HealingLight] = {mod = 0.04, current = 0}
-		-- Divinity (Add)
+		-- Divinity (Multi)
 		local Divinity = GetSpellInfo(63646)
 		talentData[Divinity] = {mod = 0.01, current = 0}
 		-- Touched by the Light (Add?)
@@ -880,8 +880,8 @@ if( playerClass == "PALADIN" ) then
 				healModifier = healModifier * 1.05
 			end
 			
-			healModifier = healModifier + talentData[Divinity].current
-			healModifier = healModifier + talentData[HealingLight].current
+			healModifier = healModifier * (1 + talentData[Divinity].current)
+			healModifier = healModifier * (1 + talentData[HealingLight].current)
 			
 			-- Apply extra spell power based on libram
 			if( playerCurrentRelic ) then
@@ -1039,7 +1039,6 @@ if( playerClass == "PRIEST" ) then
 			return HOT_HEALS, math.ceil(healAmount), hotData[spellName].interval
 		end
 	
-		-- If only every other class was as easy as Paladins
 		CalculateHealing = function(guid, spellName, spellRank)
 			local healAmount = averageHeal[spellName][spellRank]
 			local rank = HealComm.rankNumbers[spellRank]
@@ -1207,8 +1206,6 @@ if( playerClass == "SHAMAN" ) then
 			return HOT_HEALS, healAmount, hotData[spellName].interval
 		end
 	
-		
-		-- If only every other class was as easy as Paladins
 		CalculateHealing = function(guid, spellName, spellRank)
 			local healAmount = averageHeal[spellName][spellRank]
 			local rank = HealComm.rankNumbers[spellRank]
