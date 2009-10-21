@@ -18,6 +18,9 @@ local global = GetAddOnMetadata(parent, 'X-oUF')
 local oUF = _G[global] or oUF
 assert(oUF, 'oUF not loaded')
 
+local healcomm = LibStub("LibHealComm-4.0", false)
+if not healcomm then return end -- could not load LibHealComm-4.0, quit out early
+
 -- set texture and color here
 local color = {
     r = 0,
@@ -28,23 +31,32 @@ local color = {
 
 local oUF_HealComm = {}
 
-local healcomm = LibStub("LibHealComm-4.0")
-
 local unitMap = healcomm:GetGUIDUnitMapTable()
+
+local noIncomingHeals = function(frame)
+	-- if showing incoming heals bar then hide it
+	if not frame.ignoreHealComm then
+		frame.HealCommBar:Hide()
+	end
+
+	-- if showing text then set it to an empty string
+	if frame.HealCommText then
+		frame.HealCommText:SetText("")
+	end
+end
 
 -- update a specific bar
 local updateHealCommBar = function(frame, unitName, playerGUID)
 
-	if not frame.unit then return end
-
-	local frameGUID = UnitGUID(frame.unit)
-	if frameGUID ~= playerGUID then return end
-
-	if frame.ignoreHealComm then return end
-
 	-- hide bars for any units with an unknown name
 	if not unitName then
-		frame.HealCommBar:Hide()
+		noIncomingHeals(frame)
+		return
+	end
+
+	-- hide bars on DC'd or dead units
+	if (not UnitIsConnected(unitName)) or UnitIsDeadOrGhost(unitName) then
+		noIncomingHeals(frame)
 		return
 	end
 
@@ -52,7 +64,7 @@ local updateHealCommBar = function(frame, unitName, playerGUID)
 
 	-- hide if unknown max hp
 	if maxHP == 0 or maxHP == 100 then
-		frame.HealCommBar:Hide()
+		noIncomingHeals(frame)
 		return
 	end
 
@@ -60,29 +72,37 @@ local updateHealCommBar = function(frame, unitName, playerGUID)
 
 	-- hide if no heals inc
 	if incHeals == 0 then
-		frame.HealCommBar:Hide()
+		noIncomingHeals(frame)
 		return
 	end
 
 	-- apply heal modifier
 	incHeals = incHeals * healcomm:GetHealModifier(playerGUID)
 
-	frame.HealCommBar:Show()
+	-- update the incoming heal bar
+	if not frame.ignoreHealComm then
+		frame.HealCommBar:Show()
 
-	local percInc = incHeals / maxHP
-	local curHP = UnitHealth(unitName)
-	local percHP = curHP / maxHP
+		local percInc = incHeals / maxHP
+		local curHP = UnitHealth(unitName)
+		local percHP = curHP / maxHP
 
-	frame.HealCommBar:ClearAllPoints()
+		frame.HealCommBar:ClearAllPoints()
 
-	if frame.Health:GetOrientation() == "VERTICAL" then
-		frame.HealCommBar:SetHeight(percInc * frame.Health:GetHeight())
-		frame.HealCommBar:SetWidth(frame.Health:GetWidth())
-		frame.HealCommBar:SetPoint("BOTTOM", frame.Health, "BOTTOM", 0, frame.Health:GetHeight() * percHP)
-	else
-		frame.HealCommBar:SetHeight(frame.Health:GetHeight())
-		frame.HealCommBar:SetWidth(percInc * frame.Health:GetWidth())
-		frame.HealCommBar:SetPoint("LEFT", frame.Health, "LEFT", frame.Health:GetWidth() * percHP, 0)
+		if frame.Health:GetOrientation() == "VERTICAL" then
+			frame.HealCommBar:SetHeight(percInc * frame.Health:GetHeight())
+			frame.HealCommBar:SetWidth(frame.Health:GetWidth())
+			frame.HealCommBar:SetPoint("BOTTOM", frame.Health, "BOTTOM", 0, frame.Health:GetHeight() * percHP)
+		else
+			frame.HealCommBar:SetHeight(frame.Health:GetHeight())
+			frame.HealCommBar:SetWidth(percInc * frame.Health:GetWidth())
+			frame.HealCommBar:SetPoint("LEFT", frame.Health, "LEFT", frame.Health:GetWidth() * percHP, 0)
+		end
+	end
+
+	-- update the incoming heal text
+	if frame.HealCommText then
+		frame.HealCommText:SetText(frame.HealCommTextFormat and frame.HealCommTextFormat(incHeals) or format("%d", incHeals))
 	end
 end
 
@@ -101,37 +121,47 @@ local updateHealCommBars = function(...)
 		-- each character may be in multiple frames (target, raid,
 		-- focus, etc..) so need to check all frames
 		for i, frame in ipairs(oUF.objects) do
-			updateHealCommBar(frame, unit, playerGUID)
+
+			-- only update if GUID matches and there is an indicator to update
+			if (frame.unit and (UnitGUID(frame.unit) == playerGUID)) and
+			   ((not frame.ignoreHealComm) or frame.HealCommText) then
+				updateHealCommBar(frame, unit, playerGUID)
+			end
 		end
 	end
 end
 
 local function hook(frame)
-	if frame.ignoreHealComm then return end
 
+	-- stop as it is not a unit frame with a health bar
 	if not frame.Health then
 		frame.ignoreHealComm = true
-		return
 	end
 
-	-- create heal bar here and set initial values
-	local hcb = CreateFrame("StatusBar")
-	hcb:SetHeight(0) -- no initial height
-	hcb:SetWidth(0) -- no initial width
-	hcb:SetStatusBarTexture(frame.Health:GetStatusBarTexture():GetTexture())
-	hcb:SetStatusBarColor(color.r, color.g, color.b, color.a)
-	hcb:SetParent(frame)
-	hcb:SetPoint("LEFT", frame.Health, "RIGHT") -- attach to immediate right of health bar to start
-	hcb:Hide() -- hide it for now
+	-- add incoming heal bars unless they disabled us
+	if not frame.ignoreHealComm then
+		-- create heal bar here and set initial values
+		local hcb = CreateFrame("StatusBar")
+		hcb:SetHeight(0) -- no initial height
+		hcb:SetWidth(0) -- no initial width
+		hcb:SetStatusBarTexture(frame.Health:GetStatusBarTexture():GetTexture())
+		hcb:SetStatusBarColor(color.r, color.g, color.b, color.a)
+		hcb:SetParent(frame)
+		hcb:SetPoint("LEFT", frame.Health, "RIGHT") -- attach to immediate right of health bar to start
+		hcb:Hide() -- hide it for now
 
-	frame.HealCommBar = hcb
+		frame.HealCommBar = hcb
+	end
 
-	local origPostUpdate = frame.PostUpdateHealth
-	frame.PostUpdateHealth = function(...)
-		if origPostUpdate then origPostUpdate(...) end
-		local frameGUID = UnitGUID(frame.unit)
-		unitMap = healcomm:GetGUIDUnitMapTable()
-		updateHealCommBar(frame, unitMap[frameGUID], frameGUID) -- update the bar when unit's health is updated
+	-- add update to any frame that needs it
+	if (not frame.ignoreHealComm) or frame.HealCommText then
+		local origPostUpdate = frame.PostUpdateHealth
+		frame.PostUpdateHealth = function(...)
+			if origPostUpdate then origPostUpdate(...) end
+			local frameGUID = UnitGUID(frame.unit)
+			unitMap = healcomm:GetGUIDUnitMapTable()
+			updateHealCommBar(frame, unitMap[frameGUID], frameGUID) -- update the bar when unit's health is updated
+		end
 	end
 end
 
