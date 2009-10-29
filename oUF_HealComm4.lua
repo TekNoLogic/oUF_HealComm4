@@ -68,10 +68,16 @@ local updateHealCommBar = function(frame, unitName, playerGUID)
 		return
 	end
 
-	local incHeals = healcomm:GetHealAmount(playerGUID, healcomm.ALL_HEALS) or 0
+	local incHeals
+	
+	if frame.HealCommOthersOnly then -- heals from others only
+		incHeals = healcomm:GetOthersHealAmount(playerGUID, healcomm.ALL_HEALS)
+	else -- heals from everyone
+		incHeals = healcomm:GetHealAmount(playerGUID, healcomm.ALL_HEALS)
+	end
 
 	-- hide if no heals inc
-	if incHeals == 0 then
+	if not incHeals or incHeals == 0 then
 		noIncomingHeals(frame)
 		return
 	end
