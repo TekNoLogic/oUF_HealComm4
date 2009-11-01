@@ -23,104 +23,90 @@ assert(oUF, 'oUF not loaded')
 local healcomm = LibStub("LibHealComm-4.0")
 local unitMap = healcomm:GetGUIDUnitMapTable()
 
-local function noIncomingHeals(frame)
-	if frame.HealCommBar then frame.HealCommBar:Hide() end
-	if frame.HealCommText then frame.HealCommText:SetText(nil) end
+local function Hide(self)
+	if self.HealCommBar then self.HealCommBar:Hide() end
+	if self.HealCommText then self.HealCommText:SetText(nil) end
 end
 
--- update a specific bar
-local function updateHealCommBar(frame, unitName, playerGUID)
-	-- hide bars for any units with an unknown name
-	if not unitName then
-		noIncomingHeals(frame)
-		return
-	end
 
-	-- hide bars on DC'd or dead units
-	if (not UnitIsConnected(unitName)) or UnitIsDeadOrGhost(unitName) then
-		noIncomingHeals(frame)
-		return
-	end
+local function Update(self)
+	if not self.unit or UnitIsDeadOrGhost(self.unit) or not UnitIsConnected(self.unit) then return Hide(self) end
 
-	local maxHP = UnitHealthMax(unitName) or 0
+	local maxHP = UnitHealthMax(self.unit) or 0
+	if maxHP == 0 or maxHP == 100 then return Hide(self) end
 
-	-- hide if unknown max hp
-	if maxHP == 0 or maxHP == 100 then
-		noIncomingHeals(frame)
-		return
-	end
+	local guid = UnitGUID(self.unit)
+	local incHeals = healcomm:GetHealAmount(guid, healcomm.ALL_HEALS) or 0
+	if incHeals == 0 then return Hide(self) end
 
-	local incHeals = healcomm:GetHealAmount(playerGUID, healcomm.ALL_HEALS) or 0
+	incHeals = incHeals * healcomm:GetHealModifier(guid)
 
-	-- hide if no heals inc
-	if incHeals == 0 then
-		noIncomingHeals(frame)
-		return
-	end
-
-	-- apply heal modifier
-	incHeals = incHeals * healcomm:GetHealModifier(playerGUID)
-
-	-- update the incoming heal bar
-	if frame.HealCommBar then
-		frame.HealCommBar:Show()
-
-		local curHP = UnitHealth(unitName)
+	if self.HealCommBar then
+		local curHP = UnitHealth(self.unit)
 		local percHP = curHP / maxHP
-		local percInc = (frame.allowOverflow and incHeals or math.min(incHeals, maxHP-curHP)) / maxHP
+		local percInc = (self.allowOverflow and incHeals or math.min(incHeals, maxHP-curHP)) / maxHP
 
-		frame.HealCommBar:ClearAllPoints()
+		self.HealCommBar:ClearAllPoints()
 
-		if frame.Health:GetOrientation() == "VERTICAL" then
-			frame.HealCommBar:SetHeight(percInc * frame.Health:GetHeight())
-			frame.HealCommBar:SetWidth(frame.Health:GetWidth())
-			frame.HealCommBar:SetPoint("BOTTOM", frame.Health, "BOTTOM", 0, frame.Health:GetHeight() * percHP)
+		if self.Health:GetOrientation() == "VERTICAL" then
+			self.HealCommBar:SetHeight(percInc * self.Health:GetHeight())
+			self.HealCommBar:SetWidth(self.Health:GetWidth())
+			self.HealCommBar:SetPoint("BOTTOM", self.Health, "BOTTOM", 0, self.Health:GetHeight() * percHP)
 		else
-			frame.HealCommBar:SetHeight(frame.Health:GetHeight())
-			frame.HealCommBar:SetWidth(percInc * frame.Health:GetWidth())
-			frame.HealCommBar:SetPoint("LEFT", frame.Health, "LEFT", frame.Health:GetWidth() * percHP, 0)
+			self.HealCommBar:SetHeight(self.Health:GetHeight())
+			self.HealCommBar:SetWidth(percInc * self.Health:GetWidth())
+			self.HealCommBar:SetPoint("LEFT", self.Health, "LEFT", self.Health:GetWidth() * percHP, 0)
 		end
+
+		self.HealCommBar:Show()
 	end
 
-	-- update the incoming heal text
-	if frame.HealCommText then
-		frame.HealCommText:SetText(frame.HealCommTextFormat and frame.HealCommTextFormat(incHeals) or format("%d", incHeals))
+	if self.HealCommText then self.HealCommText:SetText(self.HealCommTextFormat and self.HealCommTextFormat(incHeals) or format("%d", incHeals)) end
+end
+
+
+local function Enable(self)
+	local hcb, hct = self.HealCommBar, self.HealCommText
+	if not hcb and not hct or not self.unit then return end
+
+	if hcb then
+		self:RegisterEvent("UNIT_HEALTH", Update)
+		self:RegisterEvent("UNIT_MAXHEALTH", Update)
+
+		if not hcb:GetStatusBarTexture() then hcb:SetStatusBarTexture[[Interface\TargetingFrame\UI-StatusBar]] end
+	end
+
+	return true
+end
+
+
+local function Disable(self)
+	if self.unit and (self.HealCommBar or self.HealCommText) then
+		self:UnregisterEvent("UNIT_HEALTH", Update)
+		self:UnregisterEvent("UNIT_MAXHEALTH", Update)
 	end
 end
 
-local function hook(frame)
-	local origPostUpdate = frame.PostUpdateHealth
-	frame.PostUpdateHealth = function(...)
-		if origPostUpdate then origPostUpdate(...) end
-		local frameGUID = UnitGUID(frame.unit)
-		updateHealCommBar(frame, unitMap[frameGUID], frameGUID) -- update the bar when unit's health is updated
-	end
-end
 
--- hook into all existing frames
-for i, frame in ipairs(oUF.objects) do hook(frame) end
-
--- hook into new frames as they're created
-oUF:RegisterInitCallback(hook)
+oUF:AddElement('HealComm4', Update, Enable, Disable)
 
 
--- used by library callbacks, arguments should be list of units to update
-local function updateHealCommBars(...)
+local function MultiUpdate(...)
 	for i=1,select("#", ...) do
-		local playerGUID = select(i, ...)
 		for i,frame in ipairs(oUF.objects) do
-			if frame.unit and (frame.HealCommBar or frame.HealCommText) and UnitGUID(frame.unit) == playerGUID then updateHealCommBar(frame, unitMap[playerGUID], playerGUID) end
+			if frame.unit and (frame.HealCommBar or frame.HealCommText) and UnitGUID(frame.unit) == select(i, ...) then Update(frame) end
 		end
 	end
 end
 
--- set up LibHealComm callbacks
+
 local function HealComm_Heal_Update(event, casterGUID, spellID, healType, _, ...)
-	updateHealCommBars(...)
+	MultiUpdate(...)
 end
+
 
 local function HealComm_Modified(event, guid)
-	updateHealCommBars(guid)
+	MultiUpdate(guid)
 end
 
 healcomm.RegisterCallback("oUF_HealComm4", "HealComm_HealStarted", HealComm_Heal_Update)
