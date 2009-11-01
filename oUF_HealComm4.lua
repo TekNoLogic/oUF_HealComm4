@@ -7,9 +7,15 @@
 --
 -- * currently won't update the frame if max HP is unknown (ie, restricted to 
 --   players/pets in your group that are in range), hides the bar for these
--- * can define frame.ignoreHealComm in layout to not have the bars appear on 
---   that frame
 --
+--	Elements handled:
+--	 .ignoreHealComm [boolean] (optional) - enable/disable incoming heal bars
+--	 .HealCommOthersOnly [boolean] (optional) - enable/disable showing heals cast by the player
+--	 .HealCommText [fontstring] (optional) - enable a text display for incoming heal value
+--
+--	Functions that can be overridden from within a layout:
+--	 .HealCommTextFormat(value) - return formated string to display
+-- 
 -- This addon is based on the original oUF_HealComm by Krage
 --
 --=============================================================================
