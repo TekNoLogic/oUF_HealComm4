@@ -2,13 +2,15 @@
 --
 -- oUF_HealComm4
 --
--- Uses data from LibHealComm-4.0 to add incoming heal estimate bars onto units 
+-- Uses data from LibHealComm-4.0 to add incoming heal estimate bars onto units
 -- health bars.
 --
--- * currently won't update the frame if max HP is unknown (ie, restricted to 
+-- * currently won't update the frame if max HP is unknown (ie, restricted to
 --   players/pets in your group that are in range), hides the bar for these
--- * can define frame.ignoreHealComm in layout to not have the bars appear on 
+-- * can define frame.ignoreHealComm in layout to not have the bars appear on
 --   that frame
+--
+-- - allowOverflow - If set, healcomm bars may overflow the Health bar when an overheal will occur
 --
 -- This addon is based on the original oUF_HealComm by Krage
 --
@@ -83,9 +85,9 @@ local updateHealCommBar = function(frame, unitName, playerGUID)
 	if not frame.ignoreHealComm then
 		frame.HealCommBar:Show()
 
-		local percInc = incHeals / maxHP
 		local curHP = UnitHealth(unitName)
 		local percHP = curHP / maxHP
+		local percInc = (frame.allowOverflow and incHeals or math.min(incHeals, maxHP-curHP)) / maxHP
 
 		frame.HealCommBar:ClearAllPoints()
 
