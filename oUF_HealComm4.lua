@@ -91,19 +91,6 @@ local function updateHealCommBar(frame, unitName, playerGUID)
 	end
 end
 
--- used by library callbacks, arguments should be list of units to update
-local function updateHealCommBars(...)
-	-- update the unitMap to make sure it is current
-	unitMap = healcomm:GetGUIDUnitMapTable()
-
-	for i=1,select("#", ...) do
-		local playerGUID = select(i, ...)
-		for i,frame in ipairs(oUF.objects) do
-			if frame.unit and (frame.HealCommBar or frame.HealCommText) and UnitGUID(frame.unit) == playerGUID then updateHealCommBar(frame, unitMap[playerGUID], playerGUID) end
-		end
-	end
-end
-
 local function hook(frame)
 	local origPostUpdate = frame.PostUpdateHealth
 	frame.PostUpdateHealth = function(...)
@@ -119,6 +106,20 @@ for i, frame in ipairs(oUF.objects) do hook(frame) end
 
 -- hook into new frames as they're created
 oUF:RegisterInitCallback(hook)
+
+
+-- used by library callbacks, arguments should be list of units to update
+local function updateHealCommBars(...)
+	-- update the unitMap to make sure it is current
+	unitMap = healcomm:GetGUIDUnitMapTable()
+
+	for i=1,select("#", ...) do
+		local playerGUID = select(i, ...)
+		for i,frame in ipairs(oUF.objects) do
+			if frame.unit and (frame.HealCommBar or frame.HealCommText) and UnitGUID(frame.unit) == playerGUID then updateHealCommBar(frame, unitMap[playerGUID], playerGUID) end
+		end
+	end
+end
 
 -- set up LibHealComm callbacks
 function oUF_HealComm:HealComm_Heal_Update(event, casterGUID, spellID, healType, _, ...)
