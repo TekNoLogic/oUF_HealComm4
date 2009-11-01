@@ -21,9 +21,6 @@ local oUF = _G[global] or oUF
 assert(oUF, 'oUF not loaded')
 
 local healcomm = LibStub("LibHealComm-4.0")
-
-local oUF_HealComm = {}
-
 local unitMap = healcomm:GetGUIDUnitMapTable()
 
 local function noIncomingHeals(frame)
@@ -118,17 +115,17 @@ local function updateHealCommBars(...)
 end
 
 -- set up LibHealComm callbacks
-function oUF_HealComm:HealComm_Heal_Update(event, casterGUID, spellID, healType, _, ...)
+local function HealComm_Heal_Update(event, casterGUID, spellID, healType, _, ...)
 	updateHealCommBars(...)
 end
 
-function oUF_HealComm:HealComm_Modified(event, guid)
+local function HealComm_Modified(event, guid)
 	updateHealCommBars(guid)
 end
 
-healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealStarted", "HealComm_Heal_Update")
-healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealUpdated", "HealComm_Heal_Update")
-healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealDelayed", "HealComm_Heal_Update")
-healcomm.RegisterCallback(oUF_HealComm, "HealComm_HealStopped", "HealComm_Heal_Update")
-healcomm.RegisterCallback(oUF_HealComm, "HealComm_ModifierChanged", "HealComm_Modified")
-healcomm.RegisterCallback(oUF_HealComm, "HealComm_GUIDDisappeared", "HealComm_Modified")
+healcomm.RegisterCallback("oUF_HealComm4", "HealComm_HealStarted", HealComm_Heal_Update)
+healcomm.RegisterCallback("oUF_HealComm4", "HealComm_HealUpdated", HealComm_Heal_Update)
+healcomm.RegisterCallback("oUF_HealComm4", "HealComm_HealDelayed", HealComm_Heal_Update)
+healcomm.RegisterCallback("oUF_HealComm4", "HealComm_HealStopped", HealComm_Heal_Update)
+healcomm.RegisterCallback("oUF_HealComm4", "HealComm_ModifierChanged", HealComm_Modified)
+healcomm.RegisterCallback("oUF_HealComm4", "HealComm_GUIDDisappeared", HealComm_Modified)
