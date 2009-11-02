@@ -20,8 +20,7 @@ local global = GetAddOnMetadata(parent, 'X-oUF')
 local oUF = _G[global] or oUF
 assert(oUF, 'oUF not loaded')
 
-local healcomm = LibStub("LibHealComm-4.0", false)
-if not healcomm then return end -- could not load LibHealComm-4.0, quit out early
+local healcomm = LibStub("LibHealComm-4.0")
 
 -- set texture and color here
 local color = {
