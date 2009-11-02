@@ -23,18 +23,13 @@ assert(oUF, 'oUF not loaded')
 local healcomm = LibStub("LibHealComm-4.0")
 
 -- set texture and color here
-local color = {
-    r = 0,
-    g = 1,
-    b = 0,
-    a = .25,
-}
+local color = {r = 0, g = 1, b = 0, a = .25}
 
 local oUF_HealComm = {}
 
 local unitMap = healcomm:GetGUIDUnitMapTable()
 
-local noIncomingHeals = function(frame)
+local function noIncomingHeals(frame)
 	-- if showing incoming heals bar then hide it
 	if not frame.ignoreHealComm then
 		frame.HealCommBar:Hide()
@@ -47,8 +42,7 @@ local noIncomingHeals = function(frame)
 end
 
 -- update a specific bar
-local updateHealCommBar = function(frame, unitName, playerGUID)
-
+local function updateHealCommBar(frame, unitName, playerGUID)
 	-- hide bars for any units with an unknown name
 	if not unitName then
 		noIncomingHeals(frame)
@@ -108,7 +102,7 @@ local updateHealCommBar = function(frame, unitName, playerGUID)
 end
 
 -- used by library callbacks, arguments should be list of units to update
-local updateHealCommBars = function(...)
+local function updateHealCommBars(...)
 	local playerGUID, unit
 
 	-- update the unitMap to make sure it is current
