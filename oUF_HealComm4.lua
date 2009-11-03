@@ -1,25 +1,19 @@
---==============================================================================
---
--- oUF_HealComm4
---
--- Uses data from LibHealComm-4.0 to add incoming heal estimate bars onto units
--- health bars.
---
--- * currently won't update the frame if max HP is unknown (ie, restricted to
---   players/pets in your group that are in range), hides the bar for these
---
---	Elements handled:
---	 .ignoreHealComm [boolean] (optional) - enable/disable incoming heal bars
---	 .HealCommOthersOnly [boolean] (optional) - enable/disable showing heals cast by the player
---	 .HealCommText [fontstring] (optional) - enable a text display for incoming heal value
---	 allowOverflow - If set, healcomm bars may overflow the Health bar when an overheal will occur
---
---	Functions that can be overridden from within a layout:
---	 .HealCommTextFormat(value) - return formated string to display
---
--- This addon is based on the original oUF_HealComm by Krage
---
---=============================================================================
+--[[
+	oUF-HealComm bindings
+	Credits: Krage (original oUF_HealComm)
+
+	Elements handled: .HealCommBar, .HealCommText
+
+	Options
+
+	Optional:
+	.HealCommOthersOnly: (boolean)     Ignore the player's outbound heals
+	.allowOverflow: (boolean)          Allow the HealComm bar to flow beyond the end of the Health bar
+
+	Functions that can be overridden from within a layout:
+	:HealCommTextFormat(value)         Formats the heal amount passed for display on .HealCommText
+]]
+
 local parent = debugstack():match[[\AddOns\(.-)\]]
 local global = GetAddOnMetadata(parent, 'X-oUF')
 local oUF = _G[global] or oUF
