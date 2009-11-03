@@ -14,9 +14,9 @@
 	:HealCommTextFormat(value)         Formats the heal amount passed for display on .HealCommText
 ]]
 
-local parent = debugstack():match[[\AddOns\(.-)\]]
+local parent, ns = ...
 local global = GetAddOnMetadata(parent, 'X-oUF')
-local oUF = _G[global]
+local oUF = ns.oUF or global and _G[global]
 assert(oUF, 'oUF not loaded')
 
 local healcomm = LibStub("LibHealComm-4.0")
