@@ -35,7 +35,6 @@ local function Update(self)
 	if maxHP == 0 or maxHP == 100 then return Hide(self) end
 
 	local guid = UnitGUID(self.unit)
-	local incHeals = healcomm:GetHealAmount(guid, healcomm.ALL_HEALS) or 0
 	local incHeals = self.HealCommOthersOnly and healcomm:GetOthersHealAmount(guid, healcomm.ALL_HEALS) or not self.HealCommOthersOnly and healcomm:GetHealAmount(guid, healcomm.ALL_HEALS) or 0
 	if incHeals == 0 then return Hide(self) end
 
