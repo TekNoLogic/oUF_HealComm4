@@ -16,7 +16,7 @@
 
 local parent = debugstack():match[[\AddOns\(.-)\]]
 local global = GetAddOnMetadata(parent, 'X-oUF')
-local oUF = _G[global] or oUF
+local oUF = _G[global]
 assert(oUF, 'oUF not loaded')
 
 local healcomm = LibStub("LibHealComm-4.0")
