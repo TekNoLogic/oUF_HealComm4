@@ -7,10 +7,15 @@
 --
 -- * currently won't update the frame if max HP is unknown (ie, restricted to
 --   players/pets in your group that are in range), hides the bar for these
--- * can define frame.ignoreHealComm in layout to not have the bars appear on
---   that frame
 --
--- - allowOverflow - If set, healcomm bars may overflow the Health bar when an overheal will occur
+--	Elements handled:
+--	 .ignoreHealComm [boolean] (optional) - enable/disable incoming heal bars
+--	 .HealCommOthersOnly [boolean] (optional) - enable/disable showing heals cast by the player
+--	 .HealCommText [fontstring] (optional) - enable a text display for incoming heal value
+--	 allowOverflow - If set, healcomm bars may overflow the Health bar when an overheal will occur
+--
+--	Functions that can be overridden from within a layout:
+--	 .HealCommTextFormat(value) - return formated string to display
 --
 -- This addon is based on the original oUF_HealComm by Krage
 --
@@ -37,6 +42,7 @@ local function Update(self)
 
 	local guid = UnitGUID(self.unit)
 	local incHeals = healcomm:GetHealAmount(guid, healcomm.ALL_HEALS) or 0
+	local incHeals = self.HealCommOthersOnly and healcomm:GetOthersHealAmount(guid, healcomm.ALL_HEALS) or not self.HealCommOthersOnly and healcomm:GetHealAmount(guid, healcomm.ALL_HEALS) or 0
 	if incHeals == 0 then return Hide(self) end
 
 	incHeals = incHeals * healcomm:GetHealModifier(guid)
