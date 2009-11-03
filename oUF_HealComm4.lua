@@ -92,7 +92,7 @@ oUF:AddElement('HealComm4', Update, Enable, Disable)
 
 local function MultiUpdate(...)
 	for i=1,select("#", ...) do
-		for i,frame in ipairs(oUF.objects) do
+		for _,frame in ipairs(oUF.objects) do
 			if frame.unit and (frame.HealCommBar or frame.HealCommText) and UnitGUID(frame.unit) == select(i, ...) then Update(frame) end
 		end
 	end
