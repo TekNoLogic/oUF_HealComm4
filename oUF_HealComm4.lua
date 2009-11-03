@@ -7,8 +7,8 @@
 	Options
 
 	Optional:
-	.HealCommOthersOnly: (boolean)     Ignore the player's outbound heals
-	.allowOverflow: (boolean)          Allow the HealComm bar to flow beyond the end of the Health bar
+	.HealCommOthersOnly: (boolean)       Ignore the player's outbound heals
+	.allowHealCommOverflow: (boolean)    Allow the HealComm bar to flow beyond the end of the Health bar
 
 	Functions that can be overridden from within a layout:
 	:HealCommTextFormat(value)         Formats the heal amount passed for display on .HealCommText
@@ -44,7 +44,7 @@ local function Update(self)
 	if self.HealCommBar then
 		local curHP = UnitHealth(self.unit)
 		local percHP = curHP / maxHP
-		local percInc = (self.allowOverflow and incHeals or math.min(incHeals, maxHP-curHP)) / maxHP
+		local percInc = (self.allowHealCommOverflow and incHeals or math.min(incHeals, maxHP-curHP)) / maxHP
 
 		self.HealCommBar:ClearAllPoints()
 
